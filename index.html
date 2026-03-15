@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Persistent Cycle Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cycle Tracker Pro</title>
     <style>
         :root {
             --bg-color: #000;
@@ -15,40 +15,149 @@
             --faint-text: #666;
             --accent: #ffffff;
             --predict-color: #ff4d4d88;
+            --card-bg: #111;
         }
-        body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; }
-        .nav-bar { position: fixed; top: 0; width: 100%; height: 70px; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; z-index: 100; box-sizing: border-box; border-bottom: 1px solid var(--cell-border); }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-bar {
+            position: fixed;
+            top: 0; width: 100%; height: 80px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(20px);
+            display: flex; flex-direction: column;
+            justify-content: center; padding: 0 20px;
+            z-index: 100; box-sizing: border-box;
+            border-bottom: 1px solid var(--cell-border);
+        }
+
         .nav-content { display: flex; justify-content: space-between; align-items: center; }
-        #prediction-text { font-size: 0.75rem; color: var(--blood-color); margin-top: 4px; font-weight: 500; }
-        #jump-btn { background: #222; color: #fff; border: 1px solid #444; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; }
-        #scroll-viewport { height: 100vh; overflow-y: auto; scroll-behavior: smooth; padding-top: 70px; }
-        .month-container { padding: 10px 15px 40px 15px; max-width: 500px; margin: 0 auto; }
-        .month-header { font-size: 1.2rem; font-weight: 700; padding: 20px 0; position: sticky; top: 0; background: var(--bg-color); z-index: 5; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--cell-border); border-left: 1px solid var(--cell-border); }
-        .weekday-label { text-align: center; font-size: 0.6rem; color: var(--faint-text); padding: 10px 0; text-transform: uppercase; border-bottom: 1px solid var(--cell-border); border-right: 1px solid var(--cell-border); }
-        .day { aspect-ratio: 1 / 1; border-right: 1px solid var(--cell-border); border-bottom: 1px solid var(--cell-border); position: relative; cursor: pointer; }
+        
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #222;
+            color: #888;
+            margin-left: 8px;
+            text-transform: uppercase;
+        }
+
+        #prediction-text {
+            font-size: 0.8rem; color: var(--blood-color);
+            margin-top: 6px; font-weight: 500;
+        }
+
+        .icon-btn {
+            background: #222; color: #fff; border: 1px solid #333;
+            padding: 8px 14px; border-radius: 10px; font-size: 0.8rem; cursor: pointer;
+        }
+
+        #scroll-viewport { height: 100vh; overflow-y: auto; scroll-behavior: smooth; padding-top: 80px; }
+
+        .month-container { 
+            padding: 10px 15px 40px 15px; 
+            max-width: 500px; 
+            margin: 0 auto;
+            min-height: 350px; 
+        }
+        
+        .month-header { 
+            font-size: 1.3rem; font-weight: 800; padding: 25px 0 15px 0; 
+            position: sticky; top: 0; background: var(--bg-color); z-index: 5; 
+        }
+
+        .calendar-grid { 
+            display: grid; grid-template-columns: repeat(7, 1fr); 
+            border-top: 1px solid var(--cell-border); border-left: 1px solid var(--cell-border);
+            border-radius: 12px; overflow: hidden;
+        }
+
+        .weekday-label { 
+            text-align: center; font-size: 0.65rem; color: var(--faint-text); 
+            padding: 12px 0; text-transform: uppercase;
+            border-bottom: 1px solid var(--cell-border); border-right: 1px solid var(--cell-border);
+            background: #050505;
+        }
+
+        .day { 
+            aspect-ratio: 1 / 1; border-right: 1px solid var(--cell-border); 
+            border-bottom: 1px solid var(--cell-border); position: relative; cursor: pointer;
+            contain: content; 
+        }
+        
         .day.is-today { box-shadow: inset 0 0 0 1.5px var(--accent); }
-        .day.is-predicted { border: 1.5px dashed var(--predict-color); z-index: 1; }
-        .date-num { position: absolute; top: 8px; left: 10px; font-size: 0.9rem; }
-        .icon-stack { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
-        .mini-pixel { width: 5px; height: 5px; border-radius: 1px; }
-        .pixel-blood { background-color: var(--blood-color); }
-        .pixel-pill { background-color: var(--pill-color); }
-        .day.period-active { background-color: var(--highlight-red); }
-        #bottom-sentinel, #top-sentinel { height: 120px; }
-        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; justify-content: center; align-items: center; }
-        .dial { background: #111; padding: 30px; border-radius: 28px; display: flex; flex-direction: column; gap: 15px; border: 1px solid #333; width: 240px; }
-        .dial-btn { background: #222; border: 1px solid #444; color: white; padding: 16px; border-radius: 14px; cursor: pointer; text-align: left; }
+        .day.empty { background: #050505; }
+
+        .day.is-predicted { 
+            background-image: repeating-linear-gradient(-45deg, transparent, transparent 5px, rgba(255, 77, 77, 0.05) 5px, rgba(255, 77, 77, 0.05) 10px);
+        }
+        
+        .predict-dot {
+            position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+            width: 4px; height: 4px; background: var(--blood-color); border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        .date-num { position: absolute; top: 6px; left: 8px; font-size: 0.9rem; }
+        .icon-stack { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+        .mini-pixel { width: 6px; height: 6px; border-radius: 50%; }
+        .pixel-blood { background-color: var(--blood-color); box-shadow: 0 0 5px var(--blood-color); }
+        .pixel-pill { background-color: var(--pill-color); box-shadow: 0 0 5px var(--pill-color); }
+        
+        .day.flow-heavy { background-color: rgba(255, 77, 77, 0.4); }
+        .day.flow-medium { background-color: rgba(255, 77, 77, 0.25); }
+        .day.flow-light { background-color: rgba(255, 77, 77, 0.15); }
+        .day.flow-spotting { background-color: rgba(255, 77, 77, 0.08); }
+
+        #bottom-sentinel, #top-sentinel { height: 100px; display: flex; align-items: center; justify-content: center; color: #222; }
+
+        #overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); z-index: 200; justify-content: center; align-items: flex-end;
+            padding-bottom: 20px;
+        }
+        .dial { 
+            background: var(--card-bg); padding: 24px; border-radius: 32px 32px 0 0; 
+            display: flex; flex-direction: column; gap: 12px; border-top: 1px solid #333; 
+            width: 100%; max-width: 500px; box-sizing: border-box;
+            animation: slideUp 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .section-label { font-size: 0.7rem; color: #555; font-weight: 700; text-transform: uppercase; margin-top: 10px; letter-spacing: 0.1em; }
+        .flow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        .dial-btn { 
+            background: #1a1a1a; border: 1px solid #333; color: white; 
+            padding: 16px; border-radius: 16px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 0.95rem; font-weight: 500;
+        }
+        .dial-btn.active { border-color: var(--blood-color); background: rgba(255, 77, 77, 0.1); }
+        .dial-btn.active-pill { border-color: var(--pill-color); background: rgba(77, 166, 255, 0.1); }
+        .check-mark { display: none; }
+        .active .check-mark, .active-pill .check-mark { display: block; }
     </style>
 </head>
 <body>
 
 <div class="nav-bar">
     <div class="nav-content">
-        <div style="font-weight: 800; font-size: 1rem;">CYCLE TRACKER</div>
-        <button id="jump-btn" onclick="jumpToToday()">Today</button>
+        <div style="display: flex; align-items: center;">
+            <div style="font-weight: 900; font-size: 1.2rem; letter-spacing: -0.02em;">CYCLE</div>
+            <span id="sync-status" class="status-badge">...</span>
+        </div>
+        <button class="icon-btn" onclick="jumpToToday()">Today</button>
     </div>
-    <div id="prediction-text">Log a period to start prediction</div>
+    <div id="prediction-text">Syncing cycle history...</div>
 </div>
 
 <div id="scroll-viewport">
@@ -57,149 +166,261 @@
     <div id="bottom-sentinel"></div>
 </div>
 
-<div id="overlay">
-    <div class="dial">
-        <button class="dial-btn" onclick="toggleData('blood')">🩸 Track Period</button>
-        <button class="dial-btn" onclick="toggleData('pill')">💊 Log Birth Control</button>
-        <button class="dial-btn" style="background:transparent; border:none; color:#666; text-align:center" onclick="closeDial()">Dismiss</button>
+<div id="overlay" onclick="handleOverlayClick(event)">
+    <div class="dial" onclick="event.stopPropagation()">
+        <div class="dial-header">
+            <div class="dial-date" id="selected-date-label" style="font-weight:700; font-size:1.1rem">Date</div>
+        </div>
+
+        <div class="section-label">Log Flow 🩸</div>
+        <div class="flow-grid">
+            <button id="flow-heavy" class="dial-btn" onclick="toggleFlow('heavy')">
+                <span>Heavy</span> <span class="check-mark">●</span>
+            </button>
+            <button id="flow-medium" class="dial-btn" onclick="toggleFlow('medium')">
+                <span>Medium</span> <span class="check-mark">●</span>
+            </button>
+            <button id="flow-light" class="dial-btn" onclick="toggleFlow('light')">
+                <span>Light</span> <span class="check-mark">●</span>
+            </button>
+            <button id="flow-spotting" class="dial-btn" onclick="toggleFlow('spotting')">
+                <span>Spotting</span> <span class="check-mark">●</span>
+            </button>
+        </div>
+
+        <div class="section-label">Other 💊</div>
+        <button id="btn-pill" class="dial-btn" onclick="togglePill()">
+            <span>Birth Control</span> <span class="check-mark">✓</span>
+        </button>
+
+        <button class="dial-btn" style="background:transparent; border:none; color:#555; justify-content:center; margin-top:5px" onclick="closeDial()">Dismiss</button>
     </div>
 </div>
 
-<script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'cycle-pro-safe-v1';
+
     const calendarList = document.getElementById('calendar-list');
     const viewport = document.getElementById('scroll-viewport');
     const predictLabel = document.getElementById('prediction-text');
+    const syncStatus = document.getElementById('sync-status');
+    
     let trackingData = new Map();
     let predictedDates = new Set();
     let selectedDateKey = null;
-    let lastGeneratedMonth = new Date();
-    let firstGeneratedMonth = new Date();
-    firstGeneratedMonth.setMonth(firstGeneratedMonth.getMonth() - 1);
+    let user = null;
+    
     const today = new Date();
     const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    
+    let lastGeneratedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    let firstGeneratedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    firstGeneratedMonth.setMonth(firstGeneratedMonth.getMonth() - 1);
 
-    function saveData() {
-        localStorage.setItem('cycle_tracker_data', JSON.stringify(Object.fromEntries(trackingData)));
-        updatePredictions();
+    async function start() {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+            await signInAnonymously(auth);
+        }
     }
 
-    function loadData() {
-        const saved = localStorage.getItem('cycle_tracker_data');
-        if (saved) trackingData = new Map(Object.entries(JSON.parse(saved)));
-        updatePredictions();
+    onAuthStateChanged(auth, (u) => {
+        user = u;
+        if (user) {
+            syncStatus.innerText = "Synced";
+            syncStatus.style.color = "#4CAF50";
+            const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'tracking');
+            onSnapshot(docRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const incoming = snapshot.data();
+                    trackingData = new Map(Object.entries(incoming));
+                    updatePredictions();
+                    refreshCalendar();
+                }
+            });
+        }
+    });
+
+    let saveTimeout = null;
+    function queueSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            if (!user) return;
+            const obj = Object.fromEntries(trackingData);
+            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'tracking'), obj);
+        }, 1000);
     }
 
     function updatePredictions() {
         predictedDates.clear();
-        let latestPeriodStart = null;
-        const sortedDates = Array.from(trackingData.keys()).sort((a, b) => new Date(a) - new Date(b));
-        for (let i = 0; i < sortedDates.length; i++) {
-            const currentKey = sortedDates[i];
-            if (trackingData.get(currentKey).blood) {
-                const prevDate = new Date(currentKey);
-                prevDate.setDate(prevDate.getDate() - 1);
-                const prevKey = `${prevDate.getFullYear()}-${prevDate.getMonth() + 1}-${prevDate.getDate()}`;
-                if (!trackingData.has(prevKey) || !trackingData.get(prevKey).blood) latestPeriodStart = new Date(currentKey);
+        let periodStarts = [];
+        
+        const cutoff = new Date();
+        cutoff.setFullYear(cutoff.getFullYear() - 2);
+
+        const sortedKeys = Array.from(trackingData.keys())
+            .filter(k => new Date(k) > cutoff)
+            .sort((a, b) => new Date(a) - new Date(b));
+        
+        sortedKeys.forEach(key => {
+            const data = trackingData.get(key);
+            if (data.flow) {
+                const prev = new Date(key);
+                prev.setDate(prev.getDate() - 1);
+                const prevKey = `${prev.getFullYear()}-${prev.getMonth() + 1}-${prev.getDate()}`;
+                if (!trackingData.has(prevKey) || !trackingData.get(prevKey).flow) {
+                    periodStarts.push(new Date(key));
+                }
             }
+        });
+
+        let cycleLength = 28;
+        if (periodStarts.length >= 2) {
+            let diffs = [];
+            for(let i = Math.max(0, periodStarts.length - 6); i < periodStarts.length - 1; i++) {
+                const d = (periodStarts[i+1] - periodStarts[i]) / 86400000;
+                if(d > 20 && d < 45) diffs.push(d);
+            }
+            if(diffs.length) cycleLength = Math.round(diffs.reduce((a,b)=>a+b)/diffs.length);
         }
-        if (latestPeriodStart) {
-            const nextStart = new Date(latestPeriodStart);
-            nextStart.setDate(nextStart.getDate() + 28);
-            for (let i = 0; i < 5; i++) {
-                const p = new Date(nextStart);
-                p.setDate(p.getDate() + i);
-                predictedDates.add(`${p.getFullYear()}-${p.getMonth() + 1}-${p.getDate()}`);
+
+        if (periodStarts.length) {
+            const lastStart = new Date(periodStarts[periodStarts.length - 1]);
+            
+            for (let m = 1; m <= 6; m++) {
+                const projectedStart = new Date(lastStart);
+                projectedStart.setDate(projectedStart.getDate() + (cycleLength * m));
+                
+                for (let i = 0; i < 5; i++) {
+                    const p = new Date(projectedStart);
+                    p.setDate(p.getDate() + i);
+                    predictedDates.add(`${p.getFullYear()}-${p.getMonth() + 1}-${p.getDate()}`);
+                }
+                
+                if (m === 1) {
+                    predictLabel.innerText = `Next Expected: ${projectedStart.toLocaleDateString(undefined, {month:'short', day:'numeric'})} (${cycleLength}d cycle)`;
+                }
             }
-            predictLabel.innerText = `Next period predicted: ${nextStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+        } else {
+            predictLabel.innerText = "Log flow to start 6-month prediction";
         }
     }
 
     function createMonthGrid(dateObj) {
-        const year = dateObj.getFullYear();
-        const month = dateObj.getMonth();
+        const year = dateObj.getFullYear(), month = dateObj.getMonth();
         const container = document.createElement('div');
         container.className = 'month-container';
-        container.innerHTML = `<div class="month-header">${dateObj.toLocaleString('default', { month: 'long', year: 'numeric' })}</div>`;
+        container.innerHTML = `<div class="month-header">${dateObj.toLocaleString('default', {month:'long', year:'numeric'})}</div>`;
         const grid = document.createElement('div');
         grid.className = 'calendar-grid';
-        ['S','M','T','W','T','F','S'].forEach(day => {
-            const label = document.createElement('div');
-            label.className = 'weekday-label'; label.innerText = day;
-            grid.appendChild(label);
-        });
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        for (let i = 0; i < firstDay; i++) grid.appendChild(Object.assign(document.createElement('div'), { className: 'day empty' }));
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateKey = `${year}-${month + 1}-${d}`;
-            const data = trackingData.get(dateKey) || { blood: false, pill: false };
-            const dayDiv = document.createElement('div');
-            dayDiv.id = `cell-${dateKey}`;
-            dayDiv.className = `day ${data.blood ? 'period-active' : ''} ${dateKey === todayKey ? 'is-today' : ''} ${predictedDates.has(dateKey) ? 'is-predicted' : ''}`;
-            dayDiv.onclick = () => openDial(dateKey);
-            renderDayContent(dayDiv, d, data);
-            grid.appendChild(dayDiv);
+        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div class="weekday-label">${d}</div>`);
+        
+        const first = new Date(year, month, 1).getDay();
+        const days = new Date(year, month + 1, 0).getDate();
+        
+        for(let i=0; i<first; i++) grid.innerHTML += `<div class="day empty"></div>`;
+        for(let d=1; d<=days; d++) {
+            const key = `${year}-${month+1}-${d}`;
+            const div = document.createElement('div');
+            div.id = `cell-${key}`; div.className = 'day';
+            div.onclick = () => openDial(key);
+            updateDayUI(div, d, key);
+            grid.appendChild(div);
         }
         container.appendChild(grid);
         return container;
     }
 
-    function renderDayContent(element, dayNum, data) {
-        const dateKey = element.id.replace('cell-', '');
-        element.innerHTML = `<span class="date-num">${dayNum}</span><div class="icon-stack">${data.blood ? '<div class="mini-pixel pixel-blood"></div>' : ''}${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}</div>`;
-        if(data.blood) element.classList.add('period-active'); else element.classList.remove('period-active');
-        if(predictedDates.has(dateKey)) element.classList.add('is-predicted'); else element.classList.remove('is-predicted');
+    function updateDayUI(el, dayNum, key) {
+        const data = trackingData.get(key) || {};
+        const isPredicted = predictedDates.has(key);
+        el.innerHTML = `<span class="date-num">${dayNum}</span>
+            <div class="icon-stack">
+                ${data.flow ? '<div class="mini-pixel pixel-blood"></div>' : ''}
+                ${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}
+            </div>
+            ${isPredicted && !data.flow ? '<div class="predict-dot"></div>' : ''}`;
+        
+        el.className = `day ${key === todayKey ? 'is-today' : ''} ${isPredicted ? 'is-predicted' : ''} ${data.flow ? 'flow-'+data.flow : ''}`;
     }
 
-    function loadMore(direction) {
-        if (direction === 'future') {
-            lastGeneratedMonth.setMonth(lastGeneratedMonth.getMonth() + 1);
+    function refreshCalendar() {
+        document.querySelectorAll('.day').forEach(el => {
+            if(!el.id) return;
+            const key = el.id.replace('cell-', '');
+            updateDayUI(el, key.split('-')[2], key);
+        });
+    }
+
+    function loadMore(dir) {
+        if(dir==='future') {
+            lastGeneratedMonth.setMonth(lastGeneratedMonth.getMonth()+1);
             calendarList.appendChild(createMonthGrid(new Date(lastGeneratedMonth)));
+            if (calendarList.children.length > 24) calendarList.removeChild(calendarList.firstChild);
         } else {
-            const monthEl = createMonthGrid(new Date(firstGeneratedMonth));
-            calendarList.prepend(monthEl);
-            viewport.scrollTop += monthEl.offsetHeight;
-            firstGeneratedMonth.setMonth(firstGeneratedMonth.getMonth() - 1);
+            const el = createMonthGrid(new Date(firstGeneratedMonth));
+            calendarList.prepend(el); viewport.scrollTop += el.offsetHeight;
+            firstGeneratedMonth.setMonth(firstGeneratedMonth.getMonth()-1);
+            if (calendarList.children.length > 24) calendarList.removeChild(calendarList.lastChild);
         }
     }
 
-    function jumpToToday() {
-        const todayCell = document.getElementById(`cell-${todayKey}`);
-        if (todayCell) todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    window.jumpToToday = () => {
+        const el = document.getElementById(`cell-${todayKey}`);
+        if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    };
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                if (entry.target.id === 'bottom-sentinel') loadMore('future');
-                if (entry.target.id === 'top-sentinel') loadMore('past');
-            }
+    const obs = new IntersectionObserver(e => e.forEach(en => {
+        if(en.isIntersecting) loadMore(en.target.id === 'bottom-sentinel' ? 'future' : 'past');
+    }), {root:viewport, threshold:0.01});
+    obs.observe(document.getElementById('bottom-sentinel'));
+    obs.observe(document.getElementById('top-sentinel'));
+
+    window.openDial = (key) => {
+        selectedDateKey = key;
+        const [y,m,d] = key.split('-');
+        document.getElementById('selected-date-label').innerText = new Date(y,m-1,d).toLocaleDateString(undefined, {weekday:'long', month:'long', day:'numeric'});
+        const data = trackingData.get(key) || {};
+        ['heavy','medium','light','spotting'].forEach(f => {
+            document.getElementById(`flow-${f}`).classList.toggle('active', data.flow === f);
         });
-    }, { root: viewport, threshold: 0.1 });
+        document.getElementById('btn-pill').classList.toggle('active-pill', !!data.pill);
+        document.getElementById('overlay').style.display = 'flex';
+    };
 
-    observer.observe(document.getElementById('bottom-sentinel'));
-    observer.observe(document.getElementById('top-sentinel'));
+    window.toggleFlow = (type) => {
+        const data = trackingData.get(selectedDateKey) || {};
+        data.flow = data.flow === type ? null : type;
+        trackingData.set(selectedDateKey, data);
+        updatePredictions(); refreshCalendar(); queueSave();
+        openDial(selectedDateKey);
+    };
 
-    function openDial(dateKey) { selectedDateKey = dateKey; document.getElementById('overlay').style.display = 'flex'; }
-    function closeDial() { document.getElementById('overlay').style.display = 'none'; }
+    window.togglePill = () => {
+        const data = trackingData.get(selectedDateKey) || {};
+        data.pill = !data.pill;
+        trackingData.set(selectedDateKey, data);
+        refreshCalendar(); queueSave();
+        openDial(selectedDateKey);
+    };
 
-    function toggleData(type) {
-        const current = trackingData.get(selectedDateKey) || { blood: false, pill: false };
-        current[type] = !current[type];
-        trackingData.set(selectedDateKey, current);
-        saveData();
-        document.querySelectorAll('.day').forEach(day => {
-            if(day.id.startsWith('cell-')) {
-                const k = day.id.replace('cell-', '');
-                renderDayContent(day, k.split('-')[2], trackingData.get(k) || {blood:false, pill:false});
-            }
-        });
-        closeDial();
-    }
+    window.closeDial = () => document.getElementById('overlay').style.display = 'none';
+    window.handleOverlayClick = (e) => { if(e.target.id === 'overlay') closeDial(); };
 
-    loadData();
-    for(let i=0; i<4; i++) loadMore('future');
-    window.onload = () => setTimeout(jumpToToday, 200);
+    start();
+    calendarList.appendChild(createMonthGrid(new Date(today.getFullYear(), today.getMonth(), 1)));
+    for(let i=0; i<6; i++) loadMore('future');
+    for(let i=0; i<1; i++) loadMore('past');
+    setTimeout(jumpToToday, 300);
 </script>
 </body>
 </html>

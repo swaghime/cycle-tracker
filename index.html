@@ -32,7 +32,8 @@
         .day.is-today { box-shadow: inset 0 0 0 2px var(--accent); z-index: 2; }
         .day.is-predicted { border: 1.5px dashed var(--predict-color); z-index: 1; }
         
-        .date-num { position: absolute; top: 8px; left: 10px; font-size: 0.95rem; }
+        .date-num { position: absolute; top: 8px; left: 10px; font-size: 0.95rem; color: var(--text-color); /* Ensure this isn't black! */
+    z-index: 10; }
         .icon-stack { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
         .mini-pixel { width: 6px; height: 6px; border-radius: 50%; }
         .pixel-blood { background-color: var(--blood-color); }
@@ -180,21 +181,22 @@
     }
 
     function renderDayContent(element, dayNum, data) {
-        const dateKey = element.id.replace('cell-', '');
-        const hasAnyFlow = data.heavy || data.medium || data.light || data.spotting;
-        
-        element.innerHTML = `
-            <span class="date-num">${dayNum}</span>
-            <div class="icon-stack">
-                ${hasAnyFlow ? '<div class="mini-pixel pixel-blood"></div>' : ''}
-                ${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}
-            </div>
-        `;
-        
-        if (dateKey === todayKey) element.classList.add('is-today');
-        if (hasAnyFlow) element.classList.add('period-active'); else element.classList.remove('period-active');
-        if (predictedDates.has(dateKey)) element.classList.add('is-predicted'); else element.classList.remove('is-predicted');
-    }
+    const dateKey = element.id.replace('cell-', '');
+    const hasAnyFlow = data.heavy || data.medium || data.light || data.spotting;
+    
+    // This line MUST include ${dayNum} to show the date
+    element.innerHTML = `
+        <span class="date-num">${dayNum}</span>
+        <div class="icon-stack">
+            ${hasAnyFlow ? '<div class="mini-pixel pixel-blood"></div>' : ''}
+            ${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}
+        </div>
+    `;
+    
+    if (dateKey === todayKey) element.classList.add('is-today');
+    if (hasAnyFlow) element.classList.add('period-active'); else element.classList.remove('period-active');
+    if (predictedDates.has(dateKey)) element.classList.add('is-predicted'); else element.classList.remove('is-predicted');
+}
 
     function loadMore(direction) {
         if (direction === 'future') {

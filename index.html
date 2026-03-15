@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" href="https://fav.farm/🩸">
     <title>Cycle Tracker</title>
     <style>
         :root {
@@ -17,25 +18,24 @@
             --predict-color: #ff4d4d88;
         }
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; }
-        .nav-bar { position: fixed; top: 0; width: 100%; height: 75px; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; z-index: 100; box-sizing: border-box; border-bottom: 1px solid var(--cell-border); }
+        .nav-bar { position: fixed; top: 0; width: 100%; height: 75px; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; z-index: 100; box-sizing: border-box; border-bottom: 1px solid var(--cell-border); }
         .nav-content { display: flex; justify-content: space-between; align-items: center; }
         #prediction-text { font-size: 0.75rem; color: var(--blood-color); margin-top: 4px; font-weight: 500; }
         #jump-btn { background: #fff; color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; font-weight: bold; }
         
-        #scroll-viewport { height: 100vh; overflow-y: auto; scroll-behavior: smooth; padding-top: 75px; }
+        #scroll-viewport { height: 100vh; overflow-y: auto; scroll-behavior: smooth; padding-top: 75px; -webkit-overflow-scrolling: touch; }
         .month-container { padding: 10px 15px 40px 15px; max-width: 500px; margin: 0 auto; }
         .month-header { font-size: 1.4rem; font-weight: 700; padding: 20px 0; position: sticky; top: 0; background: var(--bg-color); z-index: 5; }
         
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--cell-border); border-left: 1px solid var(--cell-border); }
-        .weekday-label { text-align: center; font-size: 0.6rem; color: var(--faint-text); padding: 10px 0; text-transform: uppercase; border-bottom: 1px solid var(--cell-border); border-right: 1px solid var(--cell-border); }
-        .day { aspect-ratio: 1 / 1; border-right: 1px solid var(--cell-border); border-bottom: 1px solid var(--cell-border); position: relative; cursor: pointer; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--cell-border); border-left: 1px solid var(--cell-border); background: var(--bg-color); }
+        .weekday-label { text-align: center; font-size: 0.65rem; color: var(--faint-text); padding: 12px 0; text-transform: uppercase; border-bottom: 1px solid var(--cell-border); border-right: 1px solid var(--cell-border); }
+        .day { aspect-ratio: 1 / 1; border-right: 1px solid var(--cell-border); border-bottom: 1px solid var(--cell-border); position: relative; min-height: 50px; }
         .day.is-today { box-shadow: inset 0 0 0 2px var(--accent); z-index: 2; }
         .day.is-predicted { border: 1.5px dashed var(--predict-color); z-index: 1; }
         
-        .date-num { position: absolute; top: 8px; left: 10px; font-size: 0.95rem; color: var(--text-color); /* Ensure this isn't black! */
-    z-index: 10; }
+        .date-num { position: absolute; top: 8px; left: 10px; font-size: 1rem; color: #fff; font-weight: 400; }
         .icon-stack { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
-        .mini-pixel { width: 6px; height: 6px; border-radius: 50%; }
+        .mini-pixel { width: 7px; height: 7px; border-radius: 50%; }
         .pixel-blood { background-color: var(--blood-color); }
         .pixel-pill { background-color: var(--pill-color); }
         .day.period-active { background-color: var(--highlight-red); }
@@ -47,7 +47,7 @@
         .dial-btn.active { border-color: var(--blood-color); background: #331a1a; }
         .dial-btn.pill-active { border-color: var(--pill-color); background: #1a2633; }
         
-        #bottom-sentinel, #top-sentinel { height: 100px; }
+        #bottom-sentinel, #top-sentinel { height: 100px; width: 100%; }
     </style>
 </head>
 <body>
@@ -57,7 +57,7 @@
         <div style="font-weight: 800; font-size: 1.1rem; letter-spacing: -0.5px;">TRACKER</div>
         <button id="jump-btn" onclick="jumpToToday()">Jump to Today</button>
     </div>
-    <div id="prediction-text">Log flow to start 6-month prediction</div>
+    <div id="prediction-text">Log flow to start prediction</div>
 </div>
 
 <div id="scroll-viewport">
@@ -92,49 +92,41 @@
     }
 
     function loadData() {
-        const saved = localStorage.getItem('cycle_tracker_data');
-        if (saved) trackingData = new Map(Object.entries(JSON.parse(saved)));
+        try {
+            const saved = localStorage.getItem('cycle_tracker_data');
+            if (saved) trackingData = new Map(Object.entries(JSON.parse(saved)));
+        } catch (e) { console.error("Data load failed", e); }
         refreshAppView();
     }
 
-    // --- ENHANCED PREDICTION LOGIC ---
     function updatePredictions() {
         predictedDates.clear();
         let latestPeriodStart = null;
         const sortedDates = Array.from(trackingData.keys()).sort((a, b) => new Date(a) - new Date(b));
         
-        for (let i = 0; i < sortedDates.length; i++) {
-            const currentKey = sortedDates[i];
+        sortedDates.forEach(currentKey => {
             const data = trackingData.get(currentKey);
-            const hasFlow = data.heavy || data.medium || data.light || data.spotting;
-            
-            if (hasFlow) {
-                const prevDate = new Date(currentKey);
-                prevDate.setDate(prevDate.getDate() - 1);
-                const prevKey = `${prevDate.getFullYear()}-${prevDate.getMonth() + 1}-${prevDate.getDate()}`;
+            if (data.heavy || data.medium || data.light || data.spotting) {
+                const d = new Date(currentKey);
+                d.setDate(d.getDate() - 1);
+                const prevKey = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
                 const prevData = trackingData.get(prevKey);
-                const prevHadFlow = prevData && (prevData.heavy || prevData.medium || prevData.light || prevData.spotting);
-                
-                if (!prevHadFlow) latestPeriodStart = new Date(currentKey);
+                if (!prevData || !(prevData.heavy || prevData.medium || prevData.light || prevData.spotting)) {
+                    latestPeriodStart = new Date(currentKey);
+                }
             }
-        }
+        });
 
         if (latestPeriodStart) {
-            // Predict 6 cycles ahead
-            for (let cycle = 1; cycle <= 6; cycle++) {
+            for (let c = 1; c <= 6; c++) {
                 const cycleStart = new Date(latestPeriodStart);
-                cycleStart.setDate(cycleStart.getDate() + (28 * cycle));
-                
-                // Highlight a 4-day predicted window for each future cycle
-                for (let day = 0; day < 4; day++) {
+                cycleStart.setDate(cycleStart.getDate() + (28 * c));
+                for (let d = 0; d < 4; d++) {
                     const p = new Date(cycleStart);
-                    p.setDate(p.getDate() + day);
+                    p.setDate(p.getDate() + d);
                     predictedDates.add(`${p.getFullYear()}-${p.getMonth() + 1}-${p.getDate()}`);
                 }
-                
-                if (cycle === 1) {
-                    predictLabel.innerText = `Next period: ${cycleStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
-                }
+                if (c === 1) predictLabel.innerText = `Next period: ${cycleStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
             }
         }
     }
@@ -142,11 +134,10 @@
     function refreshAppView() {
         updatePredictions();
         document.querySelectorAll('.day').forEach(day => {
-            if (day.id.startsWith('cell-')) {
-                const k = day.id.replace('cell-', '');
-                const d = k.split('-')[2];
-                const data = trackingData.get(k) || { heavy: false, medium: false, light: false, spotting: false, pill: false };
-                renderDayContent(day, d, data);
+            const k = day.getAttribute('data-key');
+            if (k) {
+                const data = trackingData.get(k) || {};
+                renderDayContent(day, k.split('-')[2], data);
             }
         });
     }
@@ -160,19 +151,31 @@
 
         const grid = document.createElement('div');
         grid.className = 'calendar-grid';
-        ['S','M','T','W','T','F','S'].forEach(day => grid.innerHTML += `<div class="weekday-label">${day}</div>`);
+        ['S','M','T','W','T','F','S'].forEach(day => {
+            const div = document.createElement('div');
+            div.className = 'weekday-label';
+            div.innerText = day;
+            grid.appendChild(div);
+        });
 
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        for (let i = 0; i < firstDay; i++) grid.appendChild(Object.assign(document.createElement('div'), { className: 'day empty' }));
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'day empty';
+            grid.appendChild(empty);
+        }
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateKey = `${year}-${month + 1}-${d}`;
-            const data = trackingData.get(dateKey) || { heavy: false, medium: false, light: false, spotting: false, pill: false };
             const dayDiv = document.createElement('div');
+            dayDiv.className = 'day';
+            dayDiv.setAttribute('data-key', dateKey);
             dayDiv.id = `cell-${dateKey}`;
             dayDiv.onclick = () => openDial(dateKey);
+            
+            const data = trackingData.get(dateKey) || {};
             renderDayContent(dayDiv, d, data);
             grid.appendChild(dayDiv);
         }
@@ -181,22 +184,21 @@
     }
 
     function renderDayContent(element, dayNum, data) {
-    const dateKey = element.id.replace('cell-', '');
-    const hasAnyFlow = data.heavy || data.medium || data.light || data.spotting;
-    
-    // This line MUST include ${dayNum} to show the date
-    element.innerHTML = `
-        <span class="date-num">${dayNum}</span>
-        <div class="icon-stack">
-            ${hasAnyFlow ? '<div class="mini-pixel pixel-blood"></div>' : ''}
-            ${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}
-        </div>
-    `;
-    
-    if (dateKey === todayKey) element.classList.add('is-today');
-    if (hasAnyFlow) element.classList.add('period-active'); else element.classList.remove('period-active');
-    if (predictedDates.has(dateKey)) element.classList.add('is-predicted'); else element.classList.remove('is-predicted');
-}
+        const key = element.getAttribute('data-key');
+        const hasFlow = data.heavy || data.medium || data.light || data.spotting;
+        
+        element.innerHTML = `
+            <span class="date-num">${dayNum}</span>
+            <div class="icon-stack">
+                ${hasFlow ? '<div class="mini-pixel pixel-blood"></div>' : ''}
+                ${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}
+            </div>
+        `;
+        
+        element.classList.toggle('is-today', key === todayKey);
+        element.classList.toggle('period-active', !!hasFlow);
+        element.classList.toggle('is-predicted', predictedDates.has(key));
+    }
 
     function loadMore(direction) {
         if (direction === 'future') {
@@ -212,7 +214,9 @@
 
     function jumpToToday() {
         const target = document.getElementById(`cell-${todayKey}`);
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (target) {
+            target.scrollIntoView({ behavior: 'auto', block: 'center' });
+        }
     }
 
     const observer = new IntersectionObserver((entries) => {
@@ -229,7 +233,7 @@
 
     function openDial(dateKey) {
         selectedDateKey = dateKey;
-        const data = trackingData.get(dateKey) || { heavy: false, medium: false, light: false, spotting: false, pill: false };
+        const data = trackingData.get(dateKey) || {};
         dialContent.innerHTML = `
             <div class="dial-section-title">Log 🩸</div>
             <button class="dial-btn ${data.heavy ? 'active' : ''}" onclick="toggleData('heavy')">Heavy ${data.heavy ? '✓' : ''}</button>
@@ -246,22 +250,21 @@
     function closeDial() { document.getElementById('overlay').style.display = 'none'; }
 
     function toggleData(type) {
-        const current = trackingData.get(selectedDateKey) || { heavy: false, medium: false, light: false, spotting: false, pill: false };
+        const current = trackingData.get(selectedDateKey) || {};
         if (['heavy', 'medium', 'light', 'spotting'].includes(type)) {
             const wasActive = current[type];
             current.heavy = current.medium = current.light = current.spotting = false;
             current[type] = !wasActive;
-        } else {
-            current[type] = !current[type];
-        }
+        } else { current[type] = !current[type]; }
         trackingData.set(selectedDateKey, current);
         saveData();
         openDial(selectedDateKey);
     }
 
     loadData();
-    for(let i=0; i<8; i++) loadMore('future'); // Pre-load 8 months for smooth scrolling
-    window.onload = () => setTimeout(jumpToToday, 200);
+    // Pre-load enough to fill screen
+    for(let i=0; i<6; i++) loadMore('future');
+    window.onload = () => setTimeout(jumpToToday, 300);
 </script>
 </body>
 </html>

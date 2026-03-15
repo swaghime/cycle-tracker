@@ -94,28 +94,46 @@
                 const res = await fetch(`${url}/get/cycle_data`, { headers: { Authorization: `Bearer ${token}` } });
                 const cloud = await res.json();
                 if (cloud.result) trackingData = new Map(Object.entries(JSON.parse(cloud.result)));
-            } catch(e) { console.log("Cloud sync failed, using local."); }
+            } catch(e) { console.log("Cloud sync failed."); }
         }
         refreshAppView();
     }
 
-    // --- CALENDAR LOGIC ---
+    // --- UPDATED PREDICTION LOGIC ---
     function updatePredictions() {
         predictedDates.clear();
-        let latest = null;
-        Array.from(trackingData.keys()).sort((a,b) => new Date(a)-new Date(b)).forEach(k => {
-            const d = trackingData.get(k);
-            if(d.heavy || d.medium || d.light || d.spotting) latest = new Date(k);
-        });
-        if(latest) {
-            for(let c=1; c<=3; c++) {
-                let start = new Date(latest); start.setDate(start.getDate() + (28*c));
-                for(let d=0; d<4; d++) {
-                    let p = new Date(start); p.setDate(p.getDate()+d);
-                    predictedDates.add(`${p.getFullYear()}-${p.getMonth()+1}-${p.getDate()}`);
-                }
-                if(c===1) document.getElementById('prediction-text').innerText = `Next period: ${start.toLocaleDateString(undefined, {month:'short', day:'numeric'})}`;
+        let flowDates = Array.from(trackingData.keys())
+            .filter(k => {
+                const d = trackingData.get(k);
+                return d.heavy || d.medium || d.light || d.spotting;
+            })
+            .sort((a,b) => new Date(a) - new Date(b));
+
+        if (flowDates.length === 0) return;
+
+        // Find the START of the most recent period streak
+        let lastPeriodStart = new Date(flowDates[flowDates.length - 1]);
+        for (let i = flowDates.length - 1; i > 0; i--) {
+            let current = new Date(flowDates[i]);
+            let previous = new Date(flowDates[i-1]);
+            let diff = (current - previous) / (1000 * 60 * 60 * 24);
+            if (diff <= 2) { // If dates are 1 or 2 days apart, it's the same period
+                lastPeriodStart = previous;
+            } else {
+                break; // Found the start of the current streak
             }
+        }
+
+        const cycleLen = parseInt(localStorage.getItem('cycle_length')) || 28;
+
+        for(let c=1; c<=6; c++) {
+            let start = new Date(lastPeriodStart); 
+            start.setDate(start.getDate() + (cycleLen * c));
+            for(let d=0; d<4; d++) {
+                let p = new Date(start); p.setDate(p.getDate() + d);
+                predictedDates.add(`${p.getFullYear()}-${p.getMonth()+1}-${p.getDate()}`);
+            }
+            if(c===1) document.getElementById('prediction-text').innerText = `Next period: ~${start.toLocaleDateString(undefined, {month:'short', day:'numeric'})}`;
         }
     }
 
@@ -150,12 +168,11 @@
         container.appendChild(grid); return container;
     }
 
-    // --- UI MODALS ---
     function openDial(k) {
         const d = trackingData.get(k) || {};
         window.selectedK = k;
         document.getElementById('dial-content').innerHTML = `
-            <div class="dial-section-title">${k}</div>
+            <div class="dial-section-title">${new Date(k).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
             ${['heavy','medium','light','spotting'].map(t => `<button class="dial-btn ${d[t]?'active':''}" onclick="toggleData('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)} ${d[t]?'✓':''}</button>`).join('')}
             <div class="dial-section-title">Medication</div>
             <button class="dial-btn ${d.pill?'pill-active':''}" onclick="toggleData('pill')">💊 Birth Control ${d.pill?'✓':''}</button>
@@ -166,9 +183,10 @@
 
     function openSettings() {
         document.getElementById('dial-content').innerHTML = `
-            <h3>Sync Settings</h3>
+            <h3>Sync & Cycle</h3>
             <input id="in-url" placeholder="Upstash REST URL" value="${localStorage.getItem('upstash_url')||''}">
             <input id="in-token" placeholder="Upstash Token" value="${localStorage.getItem('upstash_token')||''}">
+            <input id="in-cycle" type="number" placeholder="Cycle Length (e.g. 28)" value="${localStorage.getItem('cycle_length')||'28'}">
             <button onclick="saveSettings()">Save & Sync</button>
         `;
         document.getElementById('overlay').style.display = 'flex';
@@ -177,6 +195,7 @@
     function saveSettings() {
         localStorage.setItem('upstash_url', document.getElementById('in-url').value.trim());
         localStorage.setItem('upstash_token', document.getElementById('in-token').value.trim());
+        localStorage.setItem('cycle_length', document.getElementById('in-cycle').value || '28');
         closeDial();
         loadData();
     }
@@ -193,7 +212,6 @@
     function closeDial() { document.getElementById('overlay').style.display = 'none'; }
     function jumpToToday() { document.getElementById(`cell-${todayKey}`).scrollIntoView({block:'center'}); }
 
-    // --- INIT ---
     let fC = new Date(), pC = new Date();
     const observer = new IntersectionObserver(entries => entries.forEach(e => {
         if(e.isIntersecting && e.target.id==='bottom-sentinel') { 

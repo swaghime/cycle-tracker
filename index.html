@@ -6,59 +6,73 @@
     <title>Cycle Tracker</title>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; }
-        .nav-bar { position: fixed; top: 0; width: 100%; height: 60px; background: #111; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; box-sizing: border-box; }
-        #calendar-list { padding-top: 70px; }
-        .month-header { padding: 20px; font-weight: bold; }
-        .grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-        .day { aspect-ratio: 1; border: 0.5px solid #333; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
-        #overlay { display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 99; justify-content: center; align-items: center; }
-        .dial { background: #222; padding: 20px; border-radius: 15px; width: 80%; }
-        input { width: 100%; padding: 10px; margin: 5px 0; background: #000; color: #fff; border: 1px solid #444; }
+        .nav-bar { position: fixed; top: 0; width: 100%; height: 60px; background: #111; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; box-sizing: border-box; border-bottom: 1px solid #333; z-index: 100; }
+        #calendar-list { padding-top: 70px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #333; }
+        .day { aspect-ratio: 1; background: #000; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; }
+        .day:hover { background: #222; }
+        #overlay { display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; justify-content: center; align-items: center; }
+        .dial { background: #111; padding: 25px; border-radius: 20px; width: 80%; max-width: 300px; border: 1px solid #444; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #444; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #fff; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div class="nav-bar">
     <div>CYCLE TRACKER</div>
-    <div onclick="document.getElementById('overlay').style.display='flex'">⚙️</div>
+    <div style="cursor:pointer" onclick="document.getElementById('overlay').style.display='flex'">⚙️</div>
 </div>
 
-<div id="scroll-viewport"><div id="calendar-list"></div></div>
+<div id="calendar-list"></div>
 
 <div id="overlay" onclick="this.style.display='none'">
     <div class="dial" onclick="event.stopPropagation()">
+        <h3>Sync Settings</h3>
         <input id="in-url" placeholder="Upstash URL">
         <input id="in-token" placeholder="Upstash Token">
-        <button onclick="saveSettings()">Save & Refresh</button>
+        <button onclick="saveSettings()">Save & Sync</button>
     </div>
 </div>
 
 <script>
-    let trackingData = new Map();
-    const list = document.getElementById('calendar-list');
+    // 1. Initial Load: Check if we have credentials
+    async function loadData() {
+        const url = localStorage.getItem('upstash_url');
+        const token = localStorage.getItem('upstash_token');
+        if (!url || !token) return;
 
-    function renderCalendar() {
-        list.innerHTML = '';
-        const now = new Date();
-        const grid = document.createElement('div');
-        grid.className = 'grid';
-        for(let i=1; i<=30; i++) {
-            const d = document.createElement('div');
-            d.className = 'day'; d.innerText = i;
-            grid.appendChild(d);
-        }
-        list.appendChild(grid);
+        try {
+            const response = await fetch(`${url}/get/cycle_data`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const result = await response.json();
+            console.log("Data loaded:", result);
+        } catch(e) { console.error("Sync failed"); }
     }
 
-    async function saveSettings() {
+    // 2. Settings Logic
+    function saveSettings() {
         localStorage.setItem('upstash_url', document.getElementById('in-url').value);
         localStorage.setItem('upstash_token', document.getElementById('in-token').value);
         document.getElementById('overlay').style.display = 'none';
-        alert('Settings saved. Refreshing...');
-        location.reload();
+        alert('Settings saved. Syncing...');
+        loadData();
     }
 
-    renderCalendar();
+    // 3. Simple Calendar Render
+    const list = document.getElementById('calendar-list');
+    for(let i=1; i<=30; i++) {
+        const d = document.createElement('div');
+        d.className = 'day'; d.innerText = i;
+        d.onclick = () => alert('Log day ' + i);
+        list.appendChild(d);
+    }
+    
+    // Set initial values in inputs if they exist
+    document.getElementById('in-url').value = localStorage.getItem('upstash_url') || '';
+    document.getElementById('in-token').value = localStorage.getItem('upstash_token') || '';
+    
+    loadData();
 </script>
 </body>
 </html>

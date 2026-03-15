@@ -294,21 +294,18 @@
         }
 
         if (periodStarts.length) {
-            // Predict 6 months ahead instead of just 1
             const lastStart = new Date(periodStarts[periodStarts.length - 1]);
             
             for (let m = 1; m <= 6; m++) {
                 const projectedStart = new Date(lastStart);
                 projectedStart.setDate(projectedStart.getDate() + (cycleLength * m));
                 
-                // Average period length of 5 days
                 for (let i = 0; i < 5; i++) {
                     const p = new Date(projectedStart);
                     p.setDate(p.getDate() + i);
                     predictedDates.add(`${p.getFullYear()}-${p.getMonth() + 1}-${p.getDate()}`);
                 }
                 
-                // Show the very next one in the header
                 if (m === 1) {
                     predictLabel.innerText = `Next Expected: ${projectedStart.toLocaleDateString(undefined, {month:'short', day:'numeric'})} (${cycleLength}d cycle)`;
                 }

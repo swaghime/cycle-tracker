@@ -6,33 +6,95 @@
     <link rel="icon" href="https://fav.farm/🩸">
     <title>Cycle Tracker</title>
     <style>
-        :root { --bg-color: #000; --text-color: #fff; --cell-border: #222; --highlight-red: #ff4d4d33; --blood-color: #ff4d4d; --pill-color: #4da6ff; --faint-text: #666; --accent: #ffffff; --predict-color: #ff4d4d88; }
+        :root { 
+            --bg-color: #121212; /* Dark Gray Background */
+            --text-color: #fff; 
+            --cell-border: #222; 
+            
+            /* Muted Red Palette for Flow Intensity */
+            --highlight-red: #cc555533; /* Translucent muted red for past entries */
+            --blood-color: #cc5555; /* Medium Muted Red */
+            --blood-dark: #993333; /* Dark Muted Red - Heavy */
+            --blood-medium: #cc5555; /* Medium Muted Red - Medium */
+            --blood-light: #e06666; /* Light Muted Red - Light */
+            --blood-spotting: #e68080; /* Lightest Muted Red - Spotting */
+
+            /* Prediction Color - Light Opacity Red */
+            --predict-color: #ff4d4d22; /* Very translucent soft pink/red overlay */
+            --predict-text-color: #ff4d4d88; /* Slightly visible prediction text color */
+
+            --pill-color: #4da6ff; 
+            --faint-text: #666; 
+            --accent: #ffffff; 
+        }
+        
         body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; }
-        .nav-bar { position: fixed; top: 0; width: 100%; height: 75px; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; z-index: 100; box-sizing: border-box; border-bottom: 1px solid var(--cell-border); }
+        
+        .nav-bar { 
+            position: fixed; 
+            top: 0; 
+            width: 100%; 
+            height: 75px; 
+            background: rgba(18, 18, 18, 0.9); /* Translucent Dark Gray Nav Bar */
+            backdrop-filter: blur(15px); 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            padding: 0 20px; 
+            z-index: 100; 
+            box-sizing: border-box; 
+            border-bottom: 1px solid var(--cell-border); 
+        }
+        
         .nav-content { display: flex; justify-content: space-between; align-items: center; }
-        #prediction-text { font-size: 0.75rem; color: var(--blood-color); margin-top: 4px; font-weight: 500; }
+        #prediction-text { font-size: 0.75rem; color: var(--predict-text-color); margin-top: 4px; font-weight: 500; }
         .nav-btns { display: flex; gap: 10px; align-items: center; }
         #jump-btn { background: #fff; color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; font-weight: bold; }
-        #settings-btn { font-size: 1.2rem; cursor: pointer; }
+        #settings-btn { font-size: 1.2rem; cursor: pointer; color: #fff; }
+        
         #scroll-viewport { height: 100vh; overflow-y: auto; scroll-behavior: smooth; padding-top: 75px; -webkit-overflow-scrolling: touch; }
         .month-container { padding: 10px 15px 40px 15px; max-width: 500px; margin: 0 auto; }
         .month-header { font-size: 1.4rem; font-weight: 700; padding: 20px 0; position: sticky; top: 0; background: var(--bg-color); z-index: 5; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--cell-border); border-left: 1px solid var(--cell-border); background: var(--bg-color); }
+        
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            border-top: 1px solid var(--cell-border); 
+            border-left: 1px solid var(--cell-border); 
+            background: var(--bg-color); 
+        }
+        
         .weekday-label { text-align: center; font-size: 0.65rem; color: var(--faint-text); padding: 12px 0; text-transform: uppercase; border-bottom: 1px solid var(--cell-border); border-right: 1px solid var(--cell-border); }
         .day { aspect-ratio: 1 / 1; border-right: 1px solid var(--cell-border); border-bottom: 1px solid var(--cell-border); position: relative; min-height: 50px; }
         .day.is-today { box-shadow: inset 0 0 0 2px var(--accent); z-index: 2; }
-        .day.is-predicted { border: 1.5px dashed var(--predict-color); z-index: 1; }
+        
+        /* Prediction Highlight - Solid Light Opacity Red Overlay */
+        .day.is-predicted { background-color: var(--predict-color); z-index: 1; }
+        
         .date-num { position: absolute; top: 8px; left: 10px; font-size: 1rem; color: #fff; }
         .icon-stack { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
         .mini-pixel { width: 7px; height: 7px; border-radius: 50%; }
-        .pixel-blood { background-color: var(--blood-color); }
+        
+        /* Blood Pixels Use New Muted Red Palette */
+        .pixel-blood-heavy { background-color: var(--blood-dark); }
+        .pixel-blood-medium { background-color: var(--blood-medium); }
+        .pixel-blood-light { background-color: var(--blood-light); }
+        .pixel-blood-spotting { background-color: var(--blood-spotting); }
+        
         .pixel-pill { background-color: var(--pill-color); }
         .day.period-active { background-color: var(--highlight-red); }
+        
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 200; justify-content: center; align-items: center; }
-        .dial { background: #111; padding: 25px; border-radius: 28px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #333; width: 280px; }
+        .dial { background: #1a1a1a; padding: 25px; border-radius: 28px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #333; width: 280px; }
         .dial-section-title { font-size: 0.8rem; color: #888; text-transform: uppercase; margin-top: 10px; padding-left: 5px; }
         .dial-btn { background: #222; border: 1px solid #444; color: white; padding: 14px; border-radius: 12px; cursor: pointer; text-align: left; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; }
-        .dial-btn.active { border-color: var(--blood-color); background: #331a1a; }
+        
+        /* Active Buttons and Prediction text update to new Muted Reds */
+        .dial-btn.active.flow-heavy { border-color: var(--blood-dark); background: #331a1a88; }
+        .dial-btn.active.flow-medium { border-color: var(--blood-medium); background: #331a1a88; }
+        .dial-btn.active.flow-light { border-color: var(--blood-light); background: #331a1a88; }
+        .dial-btn.active.flow-spotting { border-color: var(--blood-spotting); background: #331a1a88; }
+        
         .dial-btn.pill-active { border-color: var(--pill-color); background: #1a2633; }
         input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
         #bottom-sentinel, #top-sentinel { height: 100px; width: 100%; }
@@ -42,7 +104,7 @@
 
 <div class="nav-bar">
     <div class="nav-content">
-        <div style="font-weight: 800; font-size: 1.1rem;">CYCLE TRACKER</div>
+        <div style="font-weight: 800; font-size: 1.1rem; color: #fff;">CYCLE TRACKER</div>
         <div class="nav-btns">
             <button id="jump-btn" onclick="jumpToToday()">Today</button>
             <div id="settings-btn" onclick="openSettings()">⚙️</div>
@@ -99,7 +161,7 @@
         refreshAppView();
     }
 
-    // --- UPDATED PREDICTION LOGIC ---
+    // --- PREDICTION LOGIC ---
     function updatePredictions() {
         predictedDates.clear();
         let flowDates = Array.from(trackingData.keys())
@@ -143,7 +205,14 @@
             const k = day.getAttribute('data-key');
             const data = trackingData.get(k) || {};
             const hasFlow = data.heavy || data.medium || data.light || data.spotting;
-            day.innerHTML = `<span class="date-num">${k.split('-')[2]}</span><div class="icon-stack">${hasFlow ? '<div class="mini-pixel pixel-blood"></div>' : ''}${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}</div>`;
+            
+            let bloodPixelClass = '';
+            if (data.heavy) bloodPixelClass = 'pixel-blood-heavy';
+            else if (data.medium) bloodPixelClass = 'pixel-blood-medium';
+            else if (data.light) bloodPixelClass = 'pixel-blood-light';
+            else if (data.spotting) bloodPixelClass = 'pixel-blood-spotting';
+
+            day.innerHTML = `<span class="date-num">${k.split('-')[2]}</span><div class="icon-stack">${hasFlow ? `<div class="mini-pixel ${bloodPixelClass}"></div>` : ''}${data.pill ? '<div class="mini-pixel pixel-pill"></div>' : ''}</div>`;
             day.classList.toggle('is-today', k === todayKey);
             day.classList.toggle('period-active', !!hasFlow);
             day.classList.toggle('is-predicted', predictedDates.has(k));
@@ -173,7 +242,17 @@
         window.selectedK = k;
         document.getElementById('dial-content').innerHTML = `
             <div class="dial-section-title">${new Date(k).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
-            ${['heavy','medium','light','spotting'].map(t => `<button class="dial-btn ${d[t]?'active':''}" onclick="toggleData('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)} ${d[t]?'✓':''}</button>`).join('')}
+            
+            ${['heavy','medium','light','spotting'].map(t => {
+                let bloodPixelClass = '';
+                if (t === 'heavy') bloodPixelClass = 'flow-heavy';
+                else if (t === 'medium') bloodPixelClass = 'flow-medium';
+                else if (t === 'light') bloodPixelClass = 'flow-light';
+                else if (t === 'spotting') bloodPixelClass = 'flow-spotting';
+
+                return `<button class="dial-btn ${d[t]?'active':''} ${bloodPixelClass}" onclick="toggleData('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)} ${d[t]?'✓':''}</button>`;
+            }).join('')}
+            
             <div class="dial-section-title">Medication</div>
             <button class="dial-btn ${d.pill?'pill-active':''}" onclick="toggleData('pill')">💊 Birth Control ${d.pill?'✓':''}</button>
             <button class="dial-btn" style="background:transparent; border:none; color:#888; justify-content:center;" onclick="closeDial()">Dismiss</button>
@@ -187,7 +266,7 @@
             <input id="in-url" placeholder="Upstash REST URL" value="${localStorage.getItem('upstash_url')||''}">
             <input id="in-token" placeholder="Upstash Token" value="${localStorage.getItem('upstash_token')||''}">
             <input id="in-cycle" type="number" placeholder="Cycle Length (e.g. 28)" value="${localStorage.getItem('cycle_length')||'28'}">
-            <button onclick="saveSettings()">Save & Sync</button>
+            <button onclick="saveSettings()" style="background: #fff; color: #000; border: none; border-radius: 8px; font-weight: bold; width: 100%; padding: 12px; margin-top: 10px; cursor: pointer;">Save & Sync</button>
         `;
         document.getElementById('overlay').style.display = 'flex';
     }

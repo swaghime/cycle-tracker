@@ -199,15 +199,25 @@
         container.className = 'month-container';
         container.innerHTML = `<div class="month-header">${dateObj.toLocaleString('default', {month:'long', year:'numeric'})}</div>`;
         const grid = document.createElement('div'); grid.className = 'calendar-grid';
+        
+        // Weekday labels (S, M, T, W, T, F, S)
         ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div class="weekday-label">${d}</div>`);
+        
+        // FIX: Give empty padding days the 'day' class so they get the grid lines
         const firstDay = new Date(year, month, 1).getDay();
-        for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
+        for(let i=0; i<firstDay; i++) {
+            const spacer = document.createElement('div');
+            spacer.className = 'day'; 
+            grid.appendChild(spacer);
+        }
+        
         const daysInMonth = new Date(year, month+1, 0).getDate();
         for(let d=1; d<=daysInMonth; d++) {
             const key = `${year}-${month+1}-${d}`, day = document.createElement('div');
             day.className = 'day'; day.setAttribute('data-key', key); day.id = `cell-${key}`;
             day.onclick = () => openDial(key); grid.appendChild(day);
         }
+        
         container.appendChild(grid); return container;
     }
 
@@ -231,7 +241,6 @@
             calendarList.prepend(createMonthGrid(new Date(pastCursor)));
         }
         refreshAppView();
-        // Adjust scroll position so the user doesn't "jump"
         viewport.scrollTop = oldScroll + (viewport.scrollHeight - oldHeight);
     }
 
@@ -295,8 +304,7 @@
     observer.observe(document.getElementById('bottom-sentinel'));
     observer.observe(document.getElementById('top-sentinel'));
     
-    // Initial Load
-    loadFuture(1); // Load current month
+    loadFuture(1); 
     loadData();
     setTimeout(jumpToToday, 500);
 </script>

@@ -7,7 +7,7 @@
   "theme_color": "#121212",
   "icons": [
     {
-      "src": "https://fav.farm/🩸",
+      "src": "https://raw.githubusercontent.com/swaghime/cycle-tracker/main/psyduck-pwa-icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
